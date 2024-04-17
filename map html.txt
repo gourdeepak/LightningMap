@@ -1,0 +1,82 @@
+<template>
+    <lightning-card title="Google Map" icon-name="standard:location">
+
+        <div class="slds-grid slds-gutters slds-m-around_medium">
+            <div class="slds-col slds-size_3-of-12">
+                
+                <lightning-combobox 
+                    label="Range"
+                    placeholder="Select Range..."
+                    value={range}
+                    options={rangeOptions}
+                    onchange={handleRangeChange}>
+                </lightning-combobox>
+                <template if:true={range}>
+                    <lightning-combobox 
+                        label="Language Known"
+                        placeholder="Select Language..."
+                        value={language}
+                        options={languageOptions}
+                        onchange={handleLanguageChange}>
+                    </lightning-combobox>
+                </template>
+        
+            </div>
+
+            <div class="slds-col slds-size_9-of-12 slds-m-top_medium">
+                <template if:true={isShowTable}>
+                    <div class="slds-scrollable" style="height:10rem;width:100%;">
+                    <table class="slds-table slds-table_bordered slds-table_cell-buffer slds-scrollable slds-table_col-bordered slds-table_striped slds-no-row-hove">
+                        <thead>
+                            <tr >
+                                <th class="" scope="col">
+                                    Volunteer
+                                </th>
+                                <th class="" scope="col">
+                                    Address
+                                </th>
+                                <th class="" scope="col">
+                                    Language
+                                </th>
+                                 <th class="" scope="col">
+                                    Count
+                                </th>
+                                <th class="" scope="col">
+                                    Assign Event?
+                                </th>
+                               
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={volunteerList} for:item="con">
+                                <tr key = {con.conId}>
+                                    <td> {con.Name}</td>
+                                    <td class="slds-cell-wrap"> {con.MailingStreet} &nbsp; {con.MailingCity} </td>
+                                    <td class="slds-cell-wrap"> {con.Language}</td>
+                                    <td> {con.EventCount}</td>
+                                    <td> <lightning-input id={con.conId} type="checkbox" name="Assign Event" value={isAssignTrue} onchange={handleCheckboxClick}></lightning-input></td>
+                                    
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    </div>
+                </template>
+            </div>
+
+
+        </div>
+
+        <div class="slds-grid slds-gutters slds-m-around_medium" >
+            <div class="slds-col slds-size_12-of-12">
+                <lightning-map map-markers={woMapMarkers}  zoom-level={zoom}  list-view="hidden" center={center}></lightning-map>
+            </div>
+         
+        </div>
+
+        <template if:true={isSpinnerVisible}>
+            <lightning-spinner alternative-text="Loading" size="x-small"></lightning-spinner>
+        </template>
+    </lightning-card>
+    
+</template>

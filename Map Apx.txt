@@ -1,0 +1,167 @@
+public class GoogleMapController {
+    
+    @AuraEnabled(cacheable=true)
+    public static String getPicklistValue(string objectApiName, string fieldApiName){
+        Wrapper objWrap= new Wrapper();        
+        objWrap.pickList = new list<DropdownWrapper>();   
+        List<Profile> PROFILE = [SELECT Id, Name FROM Profile WHERE Id=:userinfo.getProfileId() LIMIT 1];
+        String MyProflieName = PROFILE[0].Name;
+        System.debug('profile name :'+MyProflieName);
+        Schema.SObjectType convertToObj = Schema.getGlobalDescribe().get(objectApiName);        
+        Schema.DescribeSObjectResult res = convertToObj.getDescribe();        
+        Schema.DescribeFieldResult fieldResult = res.fields.getMap().get(fieldApiName).getDescribe();        
+        List<Schema.PicklistEntry> ple = fieldResult.getPicklistValues(); 
+         DropdownWrapper objVar = new DropdownWrapper();    
+            objVar.label = '--None--';            
+            objVar.value = '';
+        objWrap.pickList.add(objVar);
+        for( Schema.PicklistEntry pickListObj : ple){            
+            DropdownWrapper dwObj = new DropdownWrapper();    
+            dwObj.label = pickListObj.label;            
+            dwObj.value = pickListObj.value; 
+            objWrap.pickList.add(dwObj); 
+        }
+        
+        return JSON.serialize(objWrap);
+    }
+    
+    @AuraEnabled(cacheable = true)
+    public static string fetchEvent(string eventId){
+        system.debug('...eventId---'+eventId);
+        Wrapper wrap = new Wrapper();
+        try{
+        if(eventId != null && eventId != ''){
+            wrap.objEvent = [Select Id, Location, Status__c, Subject, Volunteer__c, Event_Geolocation__Latitude__s, Event_Geolocation__Longitude__s from Event where Id =: eventId limit 1];
+            List<Contact> contactList = [Select Id, Name,Phone, Type__c, Language_Known__c, MailingAddress, mailingStreet, mailingCity, MailingState, mailingcountry, mailingPostalCode, MailingLongitude, MailingLatitude, Education__c, (Select Id from Activities__r where Status__c!= 'Completed' AND Status__c!= 'Cancelled' ) from contact Where Type__c =: 'Volunteer'];
+            wrap.volunteerList = new List<subWrapper>();
+            for(Contact objCon : contactList){
+                subWrapper subWrap = new subWrapper();
+                subWrap.conId = objCon.Id;
+                subWrap.Name = objCon.Name;
+                subWrap.Phone = objCon.Phone;
+                subWrap.conType = objCon.Type__c;
+                subWrap.MailingStreet = objCon.MailingStreet;
+                subWrap.MailingCity = objCon.MailingCity;
+                subWrap.MailingCountry = objCon.MailingCountry;
+                subWrap.MailingPostalCode = objCon.MailingPostalCode;
+                subWrap.Language = objCon.Language_Known__c;
+                subWrap.MailingLongitude = objCon.MailingLongitude;
+                subWrap.MailingLatitude = objCon.MailingLatitude;
+                subWrap.EventCount = objCon.Activities__r.Size();
+                wrap.volunteerList.add(subWrap);
+                
+                system.debug('objCon.Name........'+objCon.Name+'///////////objCon.Events.Size()-----'+objCon.Activities__r.Size());
+            }
+        }
+            return JSON.serialize(wrap);
+        }catch(Exception ex){
+            return ex.getMessage();
+        }
+        
+    }
+    @AuraEnabled
+    public static string fetchVolunteerInRange(string eventId, string range, string language){
+        Wrapper mainWrap = new Wrapper();
+        if(range != null && range != ''){
+        mainWrap.objEvent = [Select Id, Location, Status__c, Subject, Volunteer__c, Event_Geolocation__Latitude__s, Event_Geolocation__Longitude__s from Event where Id =: eventId limit 1];
+        List<Contact> contactResponse = [Select Id, Name,Phone, Type__c, Language_Known__c, MailingLongitude, MailingLatitude, MailingAddress, mailingStreet, mailingCity,   MailingState, mailingcountry, mailingPostalCode, Education__c, (Select Id from Activities__r where Status__c!= 'Completed' AND Status__c!= 'Cancelled' ) from contact Where Type__c =: 'Volunteer'];
+        system.debug('mainWrap.objEvent------'+mainWrap.objEvent +'---'+mainWrap.objEvent.Event_Geolocation__Latitude__s + '...'+mainWrap.objEvent.Event_Geolocation__Longitude__s);
+        system.debug('contactResponse---------'+contactResponse);
+        system.debug('contactResponse lat long------'+contactResponse[0].MailingLatitude + '......' + contactResponse[0].MailingLongitude);
+        mainWrap.volunteerList = new List<subWrapper>();
+        Location loc1 = Location.newInstance(mainWrap.objEvent.Event_Geolocation__Latitude__s, mainWrap.objEvent.Event_Geolocation__Longitude__s);
+        system.debug('loc1-----------'+loc1);
+        Double objRange = Double.valueOf(range);
+        for(contact objcon : contactResponse){
+            Location loc2 = Location.newInstance(objcon.MailingLatitude,objcon.MailingLongitude);
+            system.debug('loc2-------'+loc2);
+             Double dist = Location.getDistance(loc1, loc2, 'km');
+            system.debug('dist--------'+dist+'.....objRange-------'+objRange);
+            system.debug('ConName---'+objcon.name+'Distance-----'+dist);
+            system.debug('language----'+language+'...Language_Known__c----'+objcon.Language_Known__c);
+            system.debug('objCon.Name........'+objCon.Name+'///////////objCon.Events.Size()-----'+objCon.Events.Size());
+            if(language != null && language != '' ){
+                if(objcon.Language_Known__c != null){
+                
+                if(dist < = objRange && objcon.Language_Known__c.contains(language)){
+                    subWrapper con = new subWrapper();
+                    con.conId = objcon.Id;
+                    con.Name = objcon.Name;
+                    con.Phone = objcon.Phone;
+                    con.MailingStreet = objcon.MailingStreet; 
+                    con.MailingCity =   objcon.Mailingcity;
+                    con.MailingCountry = objcon.MailingCountry;
+                     con.MailingLatitude = objcon.MailingLatitude;
+                    con.MailingLongitude = objcon.MailingLongitude;
+                    con.Language = objcon.Language_Known__c;
+                    con.EventCount = objcon.Activities__r.size();
+                    system.debug('con.Name-----'+con.Name+'...con.Language-------'+con.Language);
+                    if(con.Language != null && con.Language != ''){
+                    	mainWrap.volunteerList.add(con);
+                    }
+                }
+                }else{
+                    
+                }
+            }else{
+                if(dist < = objRange){
+                   subWrapper con = new subWrapper();
+                    con.conId = objcon.Id;
+                    con.Name = objcon.Name;
+                    con.Phone = objcon.Phone;
+                    con.MailingStreet = objcon.MailingStreet; 
+                    con.MailingCity =   objcon.Mailingcity;
+                    con.MailingCountry = objcon.MailingCountry;
+                    con.MailingLatitude = objcon.MailingLatitude;
+                    con.MailingLongitude = objcon.MailingLongitude;
+                    con.Language = objcon.Language_Known__c;
+                    con.EventCount = objcon.Activities__r.size();
+                    mainWrap.volunteerList.add(con);
+                }
+            }
+        }
+        }
+        return JSON.serialize(mainWrap);
+    }
+    
+     @AuraEnabled
+    public static Event assignEventToCon(string eventId, string conId){
+        Event objevent = [Select id, Volunteer__c, Status__c from Event where Id=: eventId];
+        objevent.Volunteer__c = conId;
+        objevent.Status__c = 'Booked';
+        update objevent;
+        /*WorkOrderLineItem woli = new WorkOrderLineItem();
+        woli.WorkOrderId = woID;
+        woli.Contact__c = conId;
+        insert woli; */
+        system.debug('objorder-----'+objevent);
+        return objevent;
+    }
+    
+    public class Wrapper{
+        public Event objEvent;
+        public List<subWrapper> volunteerList;
+        List<DropdownWrapper> pickList;
+    }
+    
+    public class subWrapper{
+        public Id conId;
+        public string Name;
+        public string Phone;
+        public string conType;
+        public string MailingStreet;
+        public string MailingCity;
+        public string MailingCountry;
+        public string MailingPostalCode;
+        public string Language;
+        public integer EventCount;
+        public double MailingLongitude;
+        public double MailingLatitude;
+    }
+    
+    public class DropdownWrapper{
+        String label;
+        String value ;
+}
+
+}
